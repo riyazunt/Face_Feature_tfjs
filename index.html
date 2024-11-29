@@ -133,7 +133,7 @@
 
     // Main function to run the model
     const runCoco = async () => {
-      const net = await tf.loadGraphModel('https://cors-anywhere.herokuapp.com/https://github.com/riyazunt/Face_Feature_tfjs/blob/main/model/model.json');
+      const net = await tf.loadGraphModel('https://raw.githubusercontent.com/riyazunt/Face_Feature_tfjs/blob/main/model/model.json');
       await setupWebcam();
       
       setInterval(() => {
