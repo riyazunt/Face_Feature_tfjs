@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-time Object Detection</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background-color: #f0f0f0;
+    }
+    
+    h1 {
+      margin-bottom: 20px;
+    }
+    
+    #controls {
+      margin-bottom: 10px;
+    }
+    
+    video, canvas {
+      max-width: 100%;
+      height: auto;
+    }
+    
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    #videoContainer {
+      position: relative;
+      display: inline-block;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h1>Real-time Face Feature Detection</h1>
+
+  <div id="controls">
+    <button id="enableButton">Enable Camera</button>
+    <button id="disableButton" disabled>Disable Camera</button>
+  </div>
+
+  <div id="videoContainer">
+    <video id="webcam" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <script type="text/javascript">
+    const webcamRef = {
+      current: document.getElementById('webcam')
+    };
+    const canvasRef = {
+      current: document.getElementById('canvas')
+    };
+    let stream = null;
+    
+    // Setup the webcam stream
+    const setupWebcam = () => {
+      return new Promise((resolve, reject) => {
+        const video = webcamRef.current;
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(s => {
+            stream = s;
+            video.srcObject = stream;
+            video.addEventListener('loadeddata', () => {
+              resolve(video);
+            });
+          })
+          .catch(err => {
+            reject(err);
+          });
+      });
+    };
+
+    // Disable the webcam stream
+    const disableWebcam = () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+
+    // Draw bounding boxes
+    const drawRect = (boxes, classes, scores, threshold, videoWidth, videoHeight, ctx) => {
+      for (let i = 0; i < scores.length; i++) {
+        if (scores[i] > threshold) {
+          const [ymin, xmin, ymax, xmax] = boxes[i];
+
+          const x = xmin * videoWidth;
+          const y = ymin * videoHeight;
+          const width = (xmax - xmin) * videoWidth;
+          const height = (ymax - ymin) * videoHeight;
+
+          ctx.beginPath();
+          ctx.rect(x, y, width, height);
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = "red";
+          ctx.fillStyle = "red";
+          ctx.stroke();
+
+          ctx.fillText(`Class: ${classes[i]} | Score: ${Math.round(scores[i] * 100)}%`, x, y > 10 ? y - 5 : 10);
+        }
+      }
+    };
+
+    // Main function to run the model
+    const runCoco = async () => {
+      const net = await tf.loadGraphModel('https://github.com/riyazunt/Face_Feature_tfjs/blob/main/model.json');
+      await setupWebcam();
+      
+      setInterval(() => {
+        detect(net);
+      }, 16.7); // Roughly 60 FPS
+    };
+
+    const detect = async (net) => {
+      if (
+        webcamRef.current && webcamRef.current.readyState === 4
+      ) {
+        const video = webcamRef.current;
+        const videoWidth = video.videoWidth;
+        const videoHeight = video.videoHeight;
+
+        canvasRef.current.width = videoWidth;
+        canvasRef.current.height = videoHeight;
+
+        const img = tf.browser.fromPixels(video);
+        const resized = tf.image.resizeBilinear(img, [224, 224]);
+        const casted = resized.cast('int32');
+        const expanded = casted.expandDims(0);
+
+        const obj = await net.executeAsync(expanded);
+        const boxes = await obj[1].array();
+        const classes = await obj[0].array();
+        const scores = await obj[4].array();
+
+        const ctx = canvasRef.current.getContext("2d");
+        ctx.clearRect(0, 0, videoWidth, videoHeight);
+
+        drawRect(boxes[0], classes[0], scores[0], 0.7, videoWidth, videoHeight, ctx);
+
+        tf.dispose([img, resized, casted, expanded, obj]);
+      }
+    };
+
+    // Handle buttons
+    document.getElementById('enableButton').addEventListener('click', async () => {
+      await runCoco();
+      document.getElementById('enableButton').disabled = true;
+      document.getElementById('disableButton').disabled = false;
+    });
+
+    document.getElementById('disableButton').addEventListener('click', () => {
+      disableWebcam();
+      document.getElementById('enableButton').disabled = false;
+      document.getElementById('disableButton').disabled = true;
+    });
+  </script>
+</body>
+</html>
