@@ -20,26 +20,33 @@
     
     h1 {
       margin-bottom: 20px;
+      text-align: center;
     }
-    
+
     #controls {
       margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
     
+    #videoContainer {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+    }
+
     video, canvas {
       max-width: 100%;
       height: auto;
     }
-    
+
     canvas {
       position: absolute;
       top: 0;
       left: 0;
-    }
-
-    #videoContainer {
-      position: relative;
-      display: inline-block;
     }
 
     button {
@@ -49,6 +56,7 @@
       color: white;
       border: none;
       cursor: pointer;
+      font-size: 16px;
     }
 
     button:hover {
@@ -58,6 +66,24 @@
     button:disabled {
       background-color: #cccccc;
       cursor: not-allowed;
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 24px;
+      }
+
+      button {
+        width: 100%;
+        font-size: 14px;
+        padding: 15px;
+      }
+      
+      #videoContainer {
+        width: 100%;
+        height: auto;
+      }
     }
   </style>
 </head>
